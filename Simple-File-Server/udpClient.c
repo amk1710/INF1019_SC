@@ -11,7 +11,7 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 
-#define BUFSIZE 1024
+#define BUFSIZE 8192
 
 /* 
  * error - wrapper for perror
