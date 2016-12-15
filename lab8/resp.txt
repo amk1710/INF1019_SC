@@ -1,0 +1,2 @@
+1) Os sapos pulam e chegam ao final em uma ordem aletória. Dependendo de quão próxima é o tempo entre um sapo e outro, há situações que o programa informa que dois sapos chegaram na mesma posição, o que não deveria acontecer. 
+2) Para corrigir o programa, usamos lock e unlock para que cada thread espere a outra terminar o uso da variável cont, que é compartilhada entre elas. 

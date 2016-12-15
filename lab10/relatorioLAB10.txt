@@ -1,0 +1,256 @@
+
+RELATÓRIO LAB10: Alunos André Mazal Krauss e Lucas Hardman.
+
+EXERCÍCIO 1: O programa imprime os arquivos na pasta corrente e informa sobre o seu tamanho e idade desde a última alteração. Usamos a função scandir e as estruturas para pegar os arquivos na pasta no vetor files. No vetor file temos o inode e o path de cada arquivo. A função então stat é usada para pegar as informações de cada arquivo na struct stat info. Nela estão a idade e o tamanho em bytes.
+
+#include <sys/types.h> 
+#include <sys/dir.h> 
+#include <sys/param.h> 
+#include <stdio.h> 
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <time.h>
+#include <sys/stat.h>
+
+
+#define TRUE 1
+#define FALSE 0
+
+extern  int alphasort(); 
+char pathname[MAXPATHLEN];
+
+int file_select(const struct direct   *entry) 
+{ 
+    if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0))  
+          return (FALSE); 
+    else 
+          return (TRUE); 
+} 
+
+//
+  
+int main(void)
+{  
+	int count,i; 
+	struct direct **files;
+	struct stat info;
+	size_t size = MAXPATHLEN; 
+	if (getcwd(pathname, size) == NULL )
+	{  
+		printf("Error getting path\n");
+		exit(0);
+	}
+	printf("Current Working Directory = %s\n",pathname);
+	count = scandir( pathname, &files, file_select, alphasort);
+	/* If no files found, make a non-selectable menu item */
+	if (count <= 0)
+	{
+		printf("No files in this directory\n");
+		exit(0);
+	}
+	
+	printf("Number of files = %d\n",count);
+	for (i=1;i<count+1;++i)
+	{
+		printf("%s\t", files[i-1]->d_name);
+		printf("inode: %ld\t", files[i-1]->d_ino);
+		
+		//pega infos do arquivo
+		if(stat(files[i-1]->d_name, &info) == 1)
+		{
+			printf("erro ao pegar arquivo\n");
+		}
+		
+		printf("tamanho: %ld\t", info.st_size);
+		printf("idade: %ld\n",  (time(NULL) - info.st_mtime)/60);
+		
+	}
+	printf("obs: idade é em minutos desde a última modificação\n"); /* flush buffer */ 
+	return 0;
+} 
+
+
+EXERCÍCIO 2: Similar ao primeiro, porém somente imprimimos a quantidade de links de cada arquivo, obtida em info.st_nlink. Após criarmos novos links através do terminal, a quantidade de links do arquivo linkado aumenta.
+
+
+#include <sys/types.h> 
+#include <sys/dir.h> 
+#include <sys/param.h> 
+#include <stdio.h> 
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <time.h>
+#include <sys/stat.h>
+
+
+#define TRUE 1
+#define FALSE 0
+
+extern  int alphasort(); 
+char pathname[MAXPATHLEN];
+
+int file_select(const struct direct   *entry) 
+{ 
+    if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0))  
+          return (FALSE); 
+    else 
+          return (TRUE); 
+}
+
+//apos executar no terminal o comando ln <arquivo> <nomeLink>, esse arquivo possuirá mais um link, como pode ser visto com a impressão feita por essa main.
+  
+int main(void)
+{  
+	int count,i; 
+	struct direct **files;
+	struct stat info;
+	size_t size = MAXPATHLEN; 
+	if (getcwd(pathname, size) == NULL )
+	{  
+		printf("Error getting path\n");
+		exit(0);
+	}
+	printf("Current Working Directory = %s\n",pathname);
+	count = scandir( pathname, &files, file_select, alphasort);
+	/* If no files found, make a non-selectable menu item */
+	if (count <= 0)
+	{
+		printf("No files in this directory\n");
+		exit(0);
+	}
+	
+	printf("Number of files = %d\n",count);
+	for (i=1;i<count+1;++i)
+	{
+		printf("%s\t", files[i-1]->d_name);
+		printf("inode: %ld\t", files[i-1]->d_ino);
+		
+		//pega infos do arquivo
+		if(stat(files[i-1]->d_name, &info) == 1)
+		{
+			printf("erro ao pegar arquivo\n");
+		}
+		
+		printf("número de links: %ld\n", info.st_nlink);
+		
+	}
+	printf("\n"); /* flush buffer */ 
+	return 0;
+} 
+
+EXERCÍCIOS 3 e 4: Criamos um mesmo programa que, recursivamente, soma o tamanho de todos os arquivos no diretório corrente e em seus subdiretórios. Ao mesmo tempo, ele imprime os diretórios e arquivos encontrados, alinhados na indentação conforme sua profundidade relativo ao primeiro diretório. Além disso, ele imprime o número total de arquivos e a profundidade máxima alcançada. 
+
+#include <sys/types.h> 
+#include <sys/dir.h> 
+#include <sys/param.h> 
+#include <stdio.h> 
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <time.h>
+#include <sys/stat.h>
+
+
+#define TRUE 1
+#define FALSE 0
+
+extern  int alphasort(); 
+
+
+int file_select(const struct direct   *entry) 
+{ 
+    if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0))  
+          return (FALSE); 
+    else 
+          return (TRUE); 
+}
+
+//função recursiva escreve em nArq e tam o número de arquivos e o tamanho total deles da propria pasta e todas as subpastas. Retorna a maior profundidade obtida. Level é o nível de recursão
+int percorre(char *path, long *nArq, long *tam, int level)
+{
+	
+	int count,i; 
+	struct direct **files;
+	struct stat info;
+	char temp[MAXPATHLEN];
+	
+	long n = 0, t = 0;
+	
+	int lmax = level, l;
+	
+	
+	count = scandir( path, &files, file_select, alphasort);
+	/* If no files found, make a non-selectable menu item */
+	if (count <= 0)
+	{
+		return -1;
+	}
+	
+	for (i=1;i<count+1;++i)
+	{
+		printf("%*s[%s]\n",4*level, "",files[i-1]->d_name);
+						
+		//pega infos do arquivo
+		if(stat(files[i-1]->d_name, &info) == 1)
+		{
+			printf("erro ao pegar arquivo\n");
+		}
+		
+		if((int)(files[i-1]->d_type) == 4)
+		{
+			strcat(temp, path);
+			strcat(temp, "/");
+			strcat(temp, files[i-1]->d_name);
+			l = percorre(temp, &n, &t, level +1);
+			if(l > lmax)
+			{
+				lmax = l;
+			}
+		}
+		
+		
+		n++;
+		t += info.st_size;
+		strcpy(temp, "");
+		
+	}
+	
+	*tam += t;
+	*nArq += n;
+	
+	return lmax;
+	
+	
+}
+
+int main(void)
+{  
+	size_t size = MAXPATHLEN; 
+	char pathname[MAXPATHLEN];
+	
+	//contadores para numero de arquivos e tamanho total
+	long int nArq = 0, tam = 0;	
+	int lmax;
+	
+	if (getcwd(pathname, size) == NULL )
+	{  
+		printf("Error getting path\n");
+		exit(0);
+	}
+	
+	printf("Current Working Directory = %s\n",pathname);
+	
+	//chama a função recursiva para a pasta corrente, com nível de profundidade 0.
+	
+	lmax = percorre(pathname, &nArq, &tam, 0);
+	
+	printf("Total number of files = %ld\n",nArq);
+	printf("Total size of files = %ld\n",tam);
+	printf("Profundidade máxima = %d\n", lmax);
+	
+	printf("\n"); /* flush buffer */ 
+	return 0;
+}
+
